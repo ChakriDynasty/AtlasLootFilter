@@ -2,7 +2,7 @@
 ## Title: AtlasLoot |cff66ccffItem Filter|r
 ## Notes: Items tab on AtlasLoot. Filter gear by level, rarity, speed, and stats.
 ## Author: ChakriDynasty
-## Version: 1.0.2
+## Version: 1.0.3
 ## Dependencies: AtlasLoot
 
 Data\Gear.lua
