@@ -1,0 +1,9 @@
+## Interface: 11200
+## Title: AtlasLoot |cff66ccffItem Filter|r
+## Notes: Items tab on AtlasLoot. Filter gear by level, rarity, speed, and stats.
+## Author: ChakriDynasty
+## Version: 1.0.0
+## Dependencies: AtlasLoot
+
+Data\Gear.lua
+Filter.lua
