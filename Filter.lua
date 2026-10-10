@@ -167,7 +167,7 @@ local function describe(item)
 		if value then tinsert(lines, (data.statLabel[si] or data.stat[si]) .. " " .. value) end
 	end
 	if item[15] ~= "" then tinsert(lines, item[15]) end
-	if item[16] > 0 then tinsert(lines, "Hover the name for the item tooltip.") end
+	if item[16] > 0 then tinsert(lines, "Ctrl-click to preview it on your character.") end
 	detail:SetText(table.concat(lines, "\n"))
 end
 
@@ -194,6 +194,12 @@ local function showPage()
 			if item[10] >= 0 then line = line .. "  " .. item[10] .. " dps" end
 			row.text:SetText(line)
 			row.item = item
+			local texture = "Interface\\Icons\\INV_Misc_QuestionMark"
+			if item[16] and item[16] > 0 then
+				local _, _, _, _, _, _, _, _, icon = GetItemInfo(item[16])
+				if icon then texture = icon end
+			end
+			row.icon:SetTexture(texture)
 			row:Show()
 		else
 			row.item = nil
@@ -211,10 +217,6 @@ function AtlasLootFilter_Search()
 	local kind = typeBtn.value or 0
 	local className = ""
 	if classBtn.value and classBtn.value > 0 then className = data.class[classBtn.value] end
-	local statA = statBtn.value or 0
-	local statB = statBtn2.value or 0
-	local needA = readNum(statMin)
-	local needB = readNum(statMin2)
 	local filters = {
 		il = { readNum(ilMin), readNum(ilMax), 3 },
 		rl = { readNum(rlMin), readNum(rlMax), 4 },
@@ -239,14 +241,6 @@ function AtlasLootFilter_Search()
 			if ok and not inRange(item[filters.sp[3]], filters.sp[1], filters.sp[2]) then ok = false end
 			if ok and not inRange(item[filters.dps[3]], filters.dps[1], filters.dps[2]) then ok = false end
 			if ok and not inRange(item[filters.ac[3]], filters.ac[1], filters.ac[2]) then ok = false end
-			if ok and statA > 0 and needA ~= nil then
-				local have = statAt(item[14], statA)
-				if not have or have < needA then ok = false end
-			end
-			if ok and statB > 0 and needB ~= nil then
-				local have = statAt(item[14], statB)
-				if not have or have < needB then ok = false end
-			end
 			if ok then tinsert(matches, i) end
 		end
 	end
@@ -272,41 +266,38 @@ local function openMenu(anchor, labels)
 	for i = 1, count do
 		local button = menu.buttons[i]
 		if not button then
-			button = CreateFrame("Button", nil, menu)
-			button:SetHeight(16)
-			button:SetPoint("TOPLEFT", menu, "TOPLEFT", 6, -4 - (i - 1) * 16)
-			button:SetPoint("RIGHT", menu, "RIGHT", -6, 0)
-			button.text = button:CreateFontString(nil, "OVERLAY", "GameFontHighlightSmall")
-			button.text:SetPoint("LEFT", button, "LEFT", 2, 0)
-			button.text:SetJustifyH("LEFT")
-			button:SetHighlightTexture("Interface\\QuestFrame\\UI-QuestTitleHighlight")
-		button:SetScript("OnClick", function()
-			this.owner.value = this.value
-			this.owner:SetText(this.label)
-			menu:Hide()
-			catch:Hide()
-		end)
+			button = CreateFrame("Button", "AtlasLootFilterOpt" .. i, menu, "UIPanelButtonTemplate")
+			button:SetHeight(18)
+			button:SetWidth(160)
+			button:SetPoint("TOPLEFT", menu, "TOPLEFT", 6, -6 - (i - 1) * 18)
+			button:SetScript("OnClick", function()
+				this.owner.value = this.value
+				this.owner:SetText(this.label)
+				menu:Hide()
+				catch:Hide()
+			end)
 			menu.buttons[i] = button
 		end
 		local value = i - 1
-		local label = "Any"
+		local label = anchor.anyText or "Any"
 		if value > 0 then label = labels[value] end
 		button.owner = anchor
 		button.value = value
 		button.label = label
-		button.text:SetText(label)
+		button:SetText(label)
+		button:Enable()
 		button:Show()
 	end
 	if count > (menu.made or 0) then menu.made = count end
 	for i = count + 1, menu.made or 0 do
 		menu.buttons[i]:Hide()
 	end
-	menu:SetHeight(count * 16 + 8)
-	menu:SetWidth(170)
+	menu:SetHeight(count * 18 + 12)
+	menu:SetWidth(172)
 	menu:ClearAllPoints()
 	menu:SetPoint("TOPLEFT", anchor, "BOTTOMLEFT", 0, -2)
-	menu:SetFrameLevel(panel:GetFrameLevel() + 30)
-	catch:SetFrameLevel(panel:GetFrameLevel() + 20)
+	menu:SetFrameStrata("TOOLTIP")
+	catch:SetFrameStrata("DIALOG")
 	catch:Show()
 	menu:Show()
 end
@@ -345,6 +336,7 @@ local function picker(parent, caption, x, y, labels)
 	button:SetHeight(22)
 	button:SetPoint("TOPLEFT", parent, "TOPLEFT", x, y)
 	button:SetText(caption)
+	button.anyText = caption
 	button.value = 0
 	button.labels = labels
 	button:SetScript("OnClick", function()
@@ -417,15 +409,11 @@ local function build()
 	slotBtn = picker(panel, "Any slot", 16, -328, AtlasLootFilterData.slot)
 	typeBtn = picker(panel, "Any type", 16, -354, AtlasLootFilterData.type)
 	classBtn = picker(panel, "Any class", 16, -380, AtlasLootFilterData.class)
-	statBtn = picker(panel, "Any stat", 16, -412, AtlasLootFilterData.statLabel)
-	statMin = editBox(panel, 70, 172, -410)
-	statBtn2 = picker(panel, "Any stat", 16, -444, AtlasLootFilterData.statLabel)
-	statMin2 = editBox(panel, 70, 172, -442)
 
 	sortBtn = CreateFrame("Button", "AtlasLootFilterSort", panel, "UIPanelButtonTemplate")
 	sortBtn:SetWidth(148)
 	sortBtn:SetHeight(22)
-	sortBtn:SetPoint("TOPLEFT", panel, "TOPLEFT", 16, -478)
+	sortBtn:SetPoint("TOPLEFT", panel, "TOPLEFT", 16, -412)
 	sortBtn:SetText("Sort: Item level")
 	sortBtn:SetScript("OnClick", function()
 		sortMode = sortMode + 1
@@ -437,7 +425,7 @@ local function build()
 	local search = CreateFrame("Button", "AtlasLootFilterSearch", panel, "UIPanelButtonTemplate")
 	search:SetWidth(90)
 	search:SetHeight(22)
-	search:SetPoint("TOPLEFT", panel, "TOPLEFT", 16, -508)
+	search:SetPoint("TOPLEFT", panel, "TOPLEFT", 16, -442)
 	search:SetText("Search")
 	search:SetScript("OnClick", AtlasLootFilter_Search)
 
@@ -458,18 +446,12 @@ local function build()
 		dpsMin:SetText("")
 		dpsMax:SetText("")
 		acMin:SetText("")
-		statMin:SetText("")
-		statMin2:SetText("")
 		slotBtn.value = 0
-		slotBtn:SetText("Any slot")
+		slotBtn:SetText(slotBtn.anyText)
 		typeBtn.value = 0
-		typeBtn:SetText("Any type")
+		typeBtn:SetText(typeBtn.anyText)
 		classBtn.value = 0
-		classBtn:SetText("Any class")
-		statBtn.value = 0
-		statBtn:SetText("Any stat")
-		statBtn2.value = 0
-		statBtn2:SetText("Any stat")
+		classBtn:SetText(classBtn.anyText)
 		sortMode = 1
 		sortBtn:SetText("Sort: Item level")
 		local q
@@ -493,12 +475,20 @@ local function build()
 		button:SetHeight(20)
 		button:SetPoint("TOPLEFT", panel, "TOPLEFT", 300, -40 - (r - 1) * 22)
 		button:SetHighlightTexture("Interface\\QuestFrame\\UI-QuestTitleHighlight")
+		button.icon = button:CreateTexture(nil, "ARTWORK")
+		button.icon:SetWidth(18)
+		button.icon:SetHeight(18)
+		button.icon:SetPoint("LEFT", button, "LEFT", 0, 0)
 		button.text = button:CreateFontString(nil, "OVERLAY", "GameFontNormalSmall")
-		button.text:SetPoint("LEFT", button, "LEFT", 4, 0)
-		button.text:SetWidth(250)
+		button.text:SetPoint("LEFT", button.icon, "RIGHT", 4, 0)
+		button.text:SetWidth(230)
 		button.text:SetJustifyH("LEFT")
 		button:SetScript("OnClick", function()
-			if this.item then describe(this.item) end
+			if not this.item then return end
+			if IsControlKeyDown() and this.item[16] and this.item[16] > 0 and DressUpItemLink then
+				DressUpItemLink("item:" .. this.item[16] .. ":0:0:0")
+			end
+			describe(this.item)
 		end)
 		button:SetScript("OnEnter", function()
 			if this.item and this.item[16] and this.item[16] > 0 then
@@ -541,22 +531,24 @@ local function build()
 	detail:SetPoint("BOTTOMRIGHT", panel, "BOTTOMRIGHT", -16, 16)
 	detail:SetJustifyH("LEFT")
 	detail:SetJustifyV("TOP")
-	detail:SetText("Click a result for its stats.\nHover a name for the item tooltip.")
+	detail:SetText("Click a result for its stats.\nCtrl-click to preview it on your character.")
 
-	menu = CreateFrame("Frame", "AtlasLootFilterMenu", panel)
+	menu = CreateFrame("Frame", "AtlasLootFilterMenu", UIParent)
 	menu:SetBackdrop({
 		bgFile = "Interface\\DialogFrame\\UI-DialogBox-Background",
 		edgeFile = "Interface\\Tooltips\\UI-Tooltip-Border",
 		tile = true, tileSize = 16, edgeSize = 12,
 		insets = { left = 3, right = 3, top = 3, bottom = 3 },
 	})
-	menu:SetFrameStrata("DIALOG")
+	menu:SetFrameStrata("TOOLTIP")
+	menu:EnableMouse(true)
 	menu.buttons = {}
 	menu:Hide()
 	menu:SetScript("OnHide", function() if catch then catch:Hide() end end)
 
-	catch = CreateFrame("Button", "AtlasLootFilterMenuCatch", panel)
-	catch:SetAllPoints(panel)
+	catch = CreateFrame("Button", "AtlasLootFilterMenuCatch", UIParent)
+	catch:SetAllPoints(UIParent)
+	catch:SetFrameStrata("DIALOG")
 	catch:SetScript("OnClick", function()
 		menu:Hide()
 		this:Hide()
