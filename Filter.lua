@@ -280,12 +280,12 @@ local function openMenu(anchor, labels)
 			button.text:SetPoint("LEFT", button, "LEFT", 2, 0)
 			button.text:SetJustifyH("LEFT")
 			button:SetHighlightTexture("Interface\\QuestFrame\\UI-QuestTitleHighlight")
-			button:SetScript("OnClick", function()
-				this.owner.value = this.value
-				this.owner.text:SetText(this.label)
-				menu:Hide()
-				catch:Hide()
-			end)
+		button:SetScript("OnClick", function()
+			this.owner.value = this.value
+			this.owner:SetText(this.label)
+			menu:Hide()
+			catch:Hide()
+		end)
 			menu.buttons[i] = button
 		end
 		local value = i - 1
@@ -319,12 +319,15 @@ local function label(parent, text, x, y)
 	return fs
 end
 
+local editSeq = 0
 local function editBox(parent, width, x, y)
-	local box = CreateFrame("EditBox", nil, parent, "InputBoxTemplate")
+	editSeq = editSeq + 1
+	local box = CreateFrame("EditBox", "AtlasLootFilterBox" .. editSeq, parent, "InputBoxTemplate")
 	box:SetAutoFocus(false)
 	box:SetWidth(width)
 	box:SetHeight(20)
 	box:SetMaxLetters(40)
+	box:SetTextInsets(2, 2, 0, 0)
 	box:SetPoint("TOPLEFT", parent, "TOPLEFT", x, y)
 	box:SetScript("OnEscapePressed", function() this:ClearFocus() end)
 	box:SetScript("OnEnterPressed", function()
@@ -334,16 +337,14 @@ local function editBox(parent, width, x, y)
 	return box
 end
 
+local pickSeq = 0
 local function picker(parent, caption, x, y, labels)
-	local button = CreateFrame("Button", nil, parent)
-	button:SetWidth(150)
-	button:SetHeight(18)
+	pickSeq = pickSeq + 1
+	local button = CreateFrame("Button", "AtlasLootFilterPick" .. pickSeq, parent, "UIPanelButtonTemplate")
+	button:SetWidth(148)
+	button:SetHeight(22)
 	button:SetPoint("TOPLEFT", parent, "TOPLEFT", x, y)
-	button:SetHighlightTexture("Interface\\QuestFrame\\UI-QuestTitleHighlight")
-	button.text = button:CreateFontString(nil, "OVERLAY", "GameFontHighlightSmall")
-	button.text:SetPoint("LEFT", button, "LEFT", 2, 0)
-	button.text:SetJustifyH("LEFT")
-	button.text:SetText(caption)
+	button:SetText(caption)
 	button.value = 0
 	button.labels = labels
 	button:SetScript("OnClick", function()
@@ -354,23 +355,25 @@ end
 
 local function build()
 	panel = CreateFrame("Frame", "AtlasLootFilterFrame", AtlasLootDefaultFrame)
-	panel:SetPoint("TOPLEFT", AtlasLootDefaultFrame, "TOPLEFT", 14, -42)
-	panel:SetPoint("BOTTOMRIGHT", AtlasLootDefaultFrame, "BOTTOMRIGHT", -14, 12)
+	panel:SetPoint("TOPLEFT", AtlasLootDefaultFrame, "TOPLEFT", 12, -40)
+	panel:SetPoint("BOTTOMRIGHT", AtlasLootDefaultFrame, "BOTTOMRIGHT", -12, 10)
 	panel:EnableMouse(true)
+	panel:SetFrameStrata("DIALOG")
 	panel:SetBackdrop({
-		bgFile = "Interface\\DialogFrame\\UI-DialogBox-Background",
-		edgeFile = "Interface\\DialogFrame\\UI-DialogBox-Border",
-		tile = true, tileSize = 32, edgeSize = 16,
+		bgFile = "Interface\\Tooltips\\UI-Tooltip-Background",
+		edgeFile = "Interface\\Tooltips\\UI-Tooltip-Border",
+		tile = true, tileSize = 16, edgeSize = 14,
 		insets = { left = 4, right = 4, top = 4, bottom = 4 },
 	})
+	panel:SetBackdropColor(0.07, 0.06, 0.05, 1)
 	panel:Hide()
 
-	label(panel, "Name", 16, -14)
-	nameBox = editBox(panel, 200, 70, -10)
-	label(panel, "Effect", 16, -40)
-	effectBox = editBox(panel, 200, 70, -36)
+	label(panel, "Name", 16, -18)
+	nameBox = editBox(panel, 180, 88, -12)
+	label(panel, "Effect", 16, -52)
+	effectBox = editBox(panel, 180, 88, -46)
 
-	label(panel, "Rarity", 16, -66)
+	label(panel, "Rarity", 16, -84)
 	local order = { 0, 1, 2, 3, 4, 5, 6, -1 }
 	local qualityButtons = {}
 	local n
@@ -379,12 +382,14 @@ local function build()
 		local button = CreateFrame("Button", nil, panel)
 		local col = math.mod(n - 1, 4)
 		local row = math.floor((n - 1) / 4)
-		button:SetWidth(68)
-		button:SetHeight(16)
-		button:SetPoint("TOPLEFT", panel, "TOPLEFT", 16 + col * 70, -82 - row * 16)
+		button:SetWidth(66)
+		button:SetHeight(18)
+		button:SetPoint("TOPLEFT", panel, "TOPLEFT", 16 + col * 70, -102 - row * 20)
 		button.q = q
 		button.text = button:CreateFontString(nil, "OVERLAY", "GameFontNormalSmall")
-		button.text:SetAllPoints(button)
+		button.text:SetPoint("LEFT", button, "LEFT", 2, 0)
+		button.text:SetPoint("RIGHT", button, "RIGHT", -2, 0)
+		button.text:SetJustifyH("CENTER")
 		button.text:SetText(QCOLOR[q] .. QNAME[q])
 		button:SetHighlightTexture("Interface\\QuestFrame\\UI-QuestTitleHighlight")
 		button:SetScript("OnClick", function()
@@ -394,33 +399,33 @@ local function build()
 		qualityButtons[n] = button
 	end
 
-	label(panel, "Item level", 16, -122)
-	ilMin = editBox(panel, 46, 90, -118)
-	ilMax = editBox(panel, 46, 150, -118)
-	label(panel, "Req level", 16, -148)
-	rlMin = editBox(panel, 46, 90, -144)
-	rlMax = editBox(panel, 46, 150, -144)
-	label(panel, "Speed", 16, -174)
-	spMin = editBox(panel, 46, 90, -170)
-	spMax = editBox(panel, 46, 150, -170)
-	label(panel, "DPS", 16, -200)
-	dpsMin = editBox(panel, 46, 90, -196)
-	dpsMax = editBox(panel, 46, 150, -196)
-	label(panel, "Armor", 16, -226)
-	acMin = editBox(panel, 46, 90, -222)
+	label(panel, "Item level", 16, -158)
+	ilMin = editBox(panel, 70, 88, -152)
+	ilMax = editBox(panel, 70, 168, -152)
+	label(panel, "Req level", 16, -192)
+	rlMin = editBox(panel, 70, 88, -186)
+	rlMax = editBox(panel, 70, 168, -186)
+	label(panel, "Speed", 16, -226)
+	spMin = editBox(panel, 70, 88, -220)
+	spMax = editBox(panel, 70, 168, -220)
+	label(panel, "DPS", 16, -260)
+	dpsMin = editBox(panel, 70, 88, -254)
+	dpsMax = editBox(panel, 70, 168, -254)
+	label(panel, "Armor", 16, -294)
+	acMin = editBox(panel, 70, 88, -288)
 
-	slotBtn = picker(panel, "Any slot", 16, -250, AtlasLootFilterData.slot)
-	typeBtn = picker(panel, "Any type", 16, -272, AtlasLootFilterData.type)
-	classBtn = picker(panel, "Any class", 16, -294, AtlasLootFilterData.class)
-	statBtn = picker(panel, "Any stat", 16, -322, AtlasLootFilterData.statLabel)
-	statMin = editBox(panel, 46, 170, -320)
-	statBtn2 = picker(panel, "Any stat", 16, -346, AtlasLootFilterData.statLabel)
-	statMin2 = editBox(panel, 46, 170, -344)
+	slotBtn = picker(panel, "Any slot", 16, -328, AtlasLootFilterData.slot)
+	typeBtn = picker(panel, "Any type", 16, -354, AtlasLootFilterData.type)
+	classBtn = picker(panel, "Any class", 16, -380, AtlasLootFilterData.class)
+	statBtn = picker(panel, "Any stat", 16, -412, AtlasLootFilterData.statLabel)
+	statMin = editBox(panel, 70, 172, -410)
+	statBtn2 = picker(panel, "Any stat", 16, -444, AtlasLootFilterData.statLabel)
+	statMin2 = editBox(panel, 70, 172, -442)
 
-	sortBtn = CreateFrame("Button", nil, panel, "UIPanelButtonTemplate")
-	sortBtn:SetWidth(150)
-	sortBtn:SetHeight(20)
-	sortBtn:SetPoint("TOPLEFT", panel, "TOPLEFT", 16, -374)
+	sortBtn = CreateFrame("Button", "AtlasLootFilterSort", panel, "UIPanelButtonTemplate")
+	sortBtn:SetWidth(148)
+	sortBtn:SetHeight(22)
+	sortBtn:SetPoint("TOPLEFT", panel, "TOPLEFT", 16, -478)
 	sortBtn:SetText("Sort: Item level")
 	sortBtn:SetScript("OnClick", function()
 		sortMode = sortMode + 1
@@ -429,14 +434,14 @@ local function build()
 		if getn(matches) > 0 then AtlasLootFilter_Search() end
 	end)
 
-	local search = CreateFrame("Button", nil, panel, "UIPanelButtonTemplate")
+	local search = CreateFrame("Button", "AtlasLootFilterSearch", panel, "UIPanelButtonTemplate")
 	search:SetWidth(90)
 	search:SetHeight(22)
-	search:SetPoint("TOPLEFT", panel, "TOPLEFT", 16, -402)
+	search:SetPoint("TOPLEFT", panel, "TOPLEFT", 16, -508)
 	search:SetText("Search")
 	search:SetScript("OnClick", AtlasLootFilter_Search)
 
-	local reset = CreateFrame("Button", nil, panel, "UIPanelButtonTemplate")
+	local reset = CreateFrame("Button", "AtlasLootFilterReset", panel, "UIPanelButtonTemplate")
 	reset:SetWidth(70)
 	reset:SetHeight(22)
 	reset:SetPoint("LEFT", search, "RIGHT", 8, 0)
@@ -456,15 +461,15 @@ local function build()
 		statMin:SetText("")
 		statMin2:SetText("")
 		slotBtn.value = 0
-		slotBtn.text:SetText("Any slot")
+		slotBtn:SetText("Any slot")
 		typeBtn.value = 0
-		typeBtn.text:SetText("Any type")
+		typeBtn:SetText("Any type")
 		classBtn.value = 0
-		classBtn.text:SetText("Any class")
+		classBtn:SetText("Any class")
 		statBtn.value = 0
-		statBtn.text:SetText("Any stat")
+		statBtn:SetText("Any stat")
 		statBtn2.value = 0
-		statBtn2.text:SetText("Any stat")
+		statBtn2:SetText("Any stat")
 		sortMode = 1
 		sortBtn:SetText("Sort: Item level")
 		local q
@@ -476,21 +481,21 @@ local function build()
 		AtlasLootFilter_Search()
 	end)
 
-	status = panel:CreateFontString(nil, "OVERLAY", "GameFontNormalSmall")
-	status:SetPoint("TOPLEFT", panel, "TOPLEFT", 250, -16)
-	status:SetText("Search to list gear.")
+	status = panel:CreateFontString(nil, "OVERLAY", "GameFontNormal")
+	status:SetPoint("TOPLEFT", panel, "TOPLEFT", 300, -16)
+	status:SetText("Press Search.")
 
 	rows = {}
 	local r
 	for r = 1, PER do
 		local button = CreateFrame("Button", nil, panel)
-		button:SetWidth(310)
-		button:SetHeight(18)
-		button:SetPoint("TOPLEFT", panel, "TOPLEFT", 250, -32 - (r - 1) * 18)
+		button:SetWidth(260)
+		button:SetHeight(20)
+		button:SetPoint("TOPLEFT", panel, "TOPLEFT", 300, -40 - (r - 1) * 22)
 		button:SetHighlightTexture("Interface\\QuestFrame\\UI-QuestTitleHighlight")
 		button.text = button:CreateFontString(nil, "OVERLAY", "GameFontNormalSmall")
 		button.text:SetPoint("LEFT", button, "LEFT", 4, 0)
-		button.text:SetWidth(300)
+		button.text:SetWidth(250)
 		button.text:SetJustifyH("LEFT")
 		button:SetScript("OnClick", function()
 			if this.item then describe(this.item) end
@@ -507,10 +512,10 @@ local function build()
 		rows[r] = button
 	end
 
-	local prev = CreateFrame("Button", nil, panel, "UIPanelButtonTemplate")
+	local prev = CreateFrame("Button", "AtlasLootFilterPrev", panel, "UIPanelButtonTemplate")
 	prev:SetWidth(70)
 	prev:SetHeight(20)
-	prev:SetPoint("TOPLEFT", panel, "TOPLEFT", 250, -252)
+	prev:SetPoint("TOPLEFT", panel, "TOPLEFT", 300, -312)
 	prev:SetText("Prev")
 	prev:SetScript("OnClick", function()
 		if page > 1 then
@@ -518,7 +523,7 @@ local function build()
 			showPage()
 		end
 	end)
-	local nextb = CreateFrame("Button", nil, panel, "UIPanelButtonTemplate")
+	local nextb = CreateFrame("Button", "AtlasLootFilterNext", panel, "UIPanelButtonTemplate")
 	nextb:SetWidth(70)
 	nextb:SetHeight(20)
 	nextb:SetPoint("LEFT", prev, "RIGHT", 6, 0)
@@ -532,11 +537,11 @@ local function build()
 	pageLabel:SetText("")
 
 	detail = panel:CreateFontString(nil, "OVERLAY", "GameFontNormalSmall")
-	detail:SetPoint("TOPLEFT", panel, "TOPLEFT", 250, -280)
-	detail:SetWidth(310)
+	detail:SetPoint("TOPLEFT", panel, "TOPLEFT", 300, -348)
+	detail:SetPoint("BOTTOMRIGHT", panel, "BOTTOMRIGHT", -16, 16)
 	detail:SetJustifyH("LEFT")
 	detail:SetJustifyV("TOP")
-	detail:SetText("Click an item for its stats. Hover a name to see the game tooltip when the item id is known.")
+	detail:SetText("Click a result for its stats.\nHover a name for the item tooltip.")
 
 	menu = CreateFrame("Frame", "AtlasLootFilterMenu", panel)
 	menu:SetBackdrop({
